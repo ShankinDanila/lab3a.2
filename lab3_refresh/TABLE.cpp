@@ -14,15 +14,21 @@ struct TTable* INIT_TABLE() {
 	struct TTable* new_tab = (struct TTable*)calloc(1, sizeof(struct TTable));
 	struct KeySpace1* KS1 = (struct KeySpace1*)calloc(MSIZE1, sizeof(struct KeySpace1));
 	struct KeySpace2* KS2 = (struct KeySpace2*)calloc(MSIZE2, sizeof(struct KeySpace2));
+	/*for (int i = 0; i < MSIZE2; i++) {
+		KS2[i].head = (struct BBlock*)calloc(1, sizeof(struct BBlock));
+	}*/
 
 	new_tab->Space1 = KS1;
+	for (int i = 0; i < MSIZE1; i++) {
+		KS1[i].busy = 0;
+	}
 	new_tab->Space2 = KS2;
 
 	return new_tab;
 }
 
 //Новый Item, пока не в таблице
-struct IItem* NEW_ITEM(char* key1, int key2, char* string, int number) {
+struct IItem* NEW_ITEM(char* key1, int key2, char* string, double number) {
 	struct InfoType* info = (struct InfoType*)calloc(1, sizeof(struct InfoType));
 	info->string = string;
 	info->number = number;
@@ -50,7 +56,7 @@ void FREE_ALL_TABLE(struct  TTable* table) {
 			int key2 = table->Space1[FIND_KS1(table, table->Space1[i].key1)].data->key2;
 			struct BBlock* tmp = table->Space2[HASH(key2)].head;
 			int ver = 0;
-			while (tmp->next != NULL) {
+			while (tmp != NULL) {
 				if (tmp->data = table->Space1[FIND_KS1(table, table->Space1[i].key1)].data) {
 					ver = tmp->release; // Считаем версию элемента из второго пространства по заданному ключу из первого пространства
 				}
@@ -65,13 +71,14 @@ void FREE_ALL_TABLE(struct  TTable* table) {
 }
 
 // Добавление элемента в таблицу
-int ADD_ITEM_TABLE(struct TTable* table, char* key1, int key2, char* str, int number) {
-	struct IItem* temp = NEW_ITEM(key1, key2, number, str);
+int ADD_ITEM_TABLE(struct TTable* table, char* key1, int key2, char* str, double number) {
+	struct IItem* temp = NEW_ITEM(key1, key2, str, number);
 	if (ADD_KS1(table, temp) < 0) {
 		return -1; // Ошибка в добавлнии в первое пространтсво
 	}
 	ADD_KS2(table, temp);
 	REORGANIZATION_KS1(table);
+	
 	return 0; // Добавление прошло успешно
 }
 
@@ -79,42 +86,61 @@ int ADD_ITEM_TABLE(struct TTable* table, char* key1, int key2, char* str, int nu
 /* Поиск в елемента в первом пространстве ключей */
 int FIND_KS1(struct TTable* table, char* key1) {
 	for (int i = 0; i < MSIZE1; i++) {
-		if ((table->Space1[i].busy == 1) && (table->Space1[i].key1 == key1)) {
+		if ((table->Space1[i].busy == 1) && (strcmp(table->Space1[i].key1, key1) == 0)) {
 			return i; // возвращаем индекс элемента
 		}
 	}
 	return -1; // элемент не найден
 }
 
+int COUNT(struct TTable* table) {
+	int count = 0;
+
+	while (table->Space1[count].busy == 1) {
+		count++;
+	}
+
+	return count;
+}
+
 // Функция реорганизации таблицы, возвращает заполненность таблицы
 int REORGANIZATION_KS1(struct TTable* table) {
 	int i = 0;
 	int j = 0;
-	struct KeySpace1 tmp;
+	int count = COUNT(table);
 
-	while (i < MSIZE1) {
-		if (table->Space1[i].busy == 1) {
-			tmp = table->Space1[i];
-			j = i;
-			while (j != 0) {
-				table->Space1[j] = table->Space1[j - 1];
-				j--;
-			}
-			table->Space1[0] = tmp;
+	while (count + i < MSIZE1) {
+		if (table->Space1[count + i].busy == 1) {
+			i = j;
+			break;
 		}
 		i++;
 	}
+
+	table->Space1[count] = table->Space1[count + j];
+	if (count == 1 && j == 0) {
+		return COUNT(table) - 1;
+	}
+	table->Space1[count + j].busy = 0;
+
+
+	/*while (i < MSIZE1) {
+		if (table->Space1[i].busy == 1) {
+			tmp = table->Space1[i];
+			j = i;
+			while (j != COUNT(table)) {
+				table->Space1[j] = table->Space1[j - 1];
+				j--;
+			}
+			table->Space1[j] = tmp;
+
+		}
+		i++;
+	}*/
 	// сборка мусора, организованная циклическим сдвигом 
 
-	int fullness = 0;
-	int count = 0;
-
-	while (table->Space1[count].busy == 1) {
-		fullness++;
-		count++;
-	}
-	// пересчет заполненности таблицы
-	return fullness;
+	
+	return COUNT(table) - 1;
 }
 
 // Вставка в первое пространство ключей
@@ -167,9 +193,10 @@ int HASH(int key2) {
 
 //Удаление блока
 struct BBlock* FREE_BLOCK_KS2_RELEASE(struct BBlock* head, int key2, int release) {
-	struct BBlock* temp = head;
-	while (temp != NULL) {
-		if ((temp->key2 == key2) & (temp->release)) {
+	struct BBlock* temp1 = head;
+	struct BBlock* temp2 = head;
+	/*while (temp != NULL) {
+		if ((temp->key2 == key2) && (temp->release == release)) {
 			if (temp == head) {
 				head = head->next;
 			}
@@ -184,7 +211,23 @@ struct BBlock* FREE_BLOCK_KS2_RELEASE(struct BBlock* head, int key2, int release
 			return head;
 		}
 		temp = temp->next;
+	}*/
+	if (temp1->next == NULL) {
+		FREE_ITEM(temp1->data);
+		free(temp1);
+		return head;
 	}
+
+	while (temp1->next->key2 != key2 && temp1->next->release != release) {
+		temp1 = temp1->next;
+	}
+	while (temp2->key2 != key2 && temp2->release != release) {
+		temp2 = temp2->next;
+	}
+	temp1->next = temp2->next;
+	FREE_ITEM(temp2->data);
+	free(temp2);
+	
 	return head;
 }
 
@@ -202,19 +245,8 @@ struct BBlock* FREE_LIST_KS2(struct BBlock* head) {
 
 // Добавление элемента во второе пространство ключей
 void ADD_KS2(struct TTable* table, struct IItem* item) {
-	struct KeySpace2* List = table->Space2 + HASH(item->key2);
-	/*List->head->next->release = 0;
 
-	struct BBlock* tmp = table->Space2[HASH(item->key2)].head;
-	int count = 0;
-	while (tmp != NULL) {
-		if ((tmp->key2 = item->key2) && (tmp->release > count)) {
-			count = tmp->release;
-		}
-	}
-	List->head->release = count + 1;*/
-
-	List->head = NEW_BLOCK(List->head, item);
+	table->Space2[HASH(item->key2)].head = NEW_BLOCK(table->Space2[HASH(item->key2)].head, item);
 }
 
 // Добавление блока в список коллизий
@@ -222,24 +254,29 @@ struct BBlock* NEW_BLOCK(struct BBlock* head, struct IItem* item) {
 	int count = 0;
 	struct BBlock* tmp = head;
 	struct BBlock* previous = NULL;
-	int rel = 1;
+	int rel = 0;
 	while (tmp) {
 		previous = tmp;
 		tmp = tmp->next;
 		rel++;
 	}
-	
-	tmp = (struct BBlock*)calloc(1, sizeof(struct BBlock));
-	tmp->prev = previous;
-	if (tmp->prev) { 
-		tmp = tmp->prev->next; 
+	free(tmp);
+
+	struct BBlock* addind = (struct BBlock*)calloc(1, sizeof(struct BBlock));
+	addind->release = rel;
+	addind->data = item;
+	addind->key2 = item->key2;
+
+	if (head == NULL) {
+		head = addind;
 	}
-	else { 
-		head = tmp; 
+	else {
+		addind->next = head->next;
+		head->next = addind;
+		addind->prev = head;
+		head->next->prev = addind;
 	}
-	tmp->release = rel;
-	tmp->next = NULL;
-	tmp->data = item;
+
 	return head;
 }
 
@@ -260,18 +297,19 @@ struct BBlock** FIND_KS2_RELEASE(struct TTable* table, int key2, int release) {
 
 // Поиск по второму пространству ключей (возвращается список элементов с тем же ключом)
 struct BBlock** FIND_KS2(struct TTable* table, int key2, int *len) {
-	int *count = 0;
+	int count = 0;
 	struct BBlock** list = NULL;
 	struct BBlock* tmp = table->Space2[HASH(key2)].head;
 	
 	while (tmp != NULL) {
 		if (tmp->data->key2 == key2) {
-			(*count)++;
-			list = (struct BBlock**)realloc(list, *count * sizeof(struct KeySpace2*));
-			list[*count - 1] = tmp;
+			count++;
+			list = (struct BBlock**)realloc(list, count * sizeof(struct KeySpace2*));
+			list[count - 1] = tmp;
 		}
 		tmp = tmp->next;
 	}
+	*len = count;
 	return list;
 }
 
@@ -279,14 +317,15 @@ int DELETE_KS2_RELEASE(struct TTable* table, int key2, int release) {
 	struct BBlock* tmp = table->Space2[HASH(key2)].head;
 	while (tmp != NULL) {
 		if (tmp->release == release) {
-			for (int i = 0; i < REORGANIZATION_KS1(table); i++) {
-				if (table->Space1[i].key1 == tmp->data->key1) {
-					table->Space1[i].busy == 0;
+			for (int i = 0; i <= REORGANIZATION_KS1(table); i++) {
+				if (strcmp(table->Space1[i].key1, tmp->data->key1) == 0) {
+					table->Space1[i].busy = 0;
 					break;
 				}
 			}
 			if (tmp == table->Space2[HASH(key2)].head) {
 				table->Space2[HASH(key2)].head = FREE_BLOCK_KS2_RELEASE(tmp, key2, release);
+				return 0;
 			}
 			else {
 				FREE_BLOCK_KS2_RELEASE(tmp, key2, release);

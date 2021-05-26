@@ -20,18 +20,23 @@ int main() {
         case 0:
             break;
         case 1:
-            printf("Please, enter key1, key2, info_num: ");
-            char key1[N];
+            printf("Please, enter key2, info_num: ");
+            //char key1;
             int key2;
             double num;
-            scanf("%s %s %d", key1, &key2, &num);
+            scanf("%d %lf", &key2, &num);
+            scanf("%*c");
 
             printf("Please, enter info_string: ");
             char* string = get_str();
 
+            printf("Enter key1");
+            char* key1 = get_str();
+
             if (ADD_ITEM_TABLE(table, key1, key2, string, num) == -1) {
                 printf("Error in adding");
             }
+
             break;
         
         case 2:
@@ -39,26 +44,26 @@ int main() {
             break;
         case 3:
             printf("Enter key1: ");
-            char key111[N];
-            scanf("%s", key111);
-            if (FIND_KS1(table, key111) > 1) {
+            char* key111 = get_str();
+            if (FIND_KS1(table, key111) >= 0) {
                 struct BBlock* tmp = table->Space2[HASH(table->Space1[FIND_KS1(table, key111)].data->key2)].head;
                 int count = 0;
                 while (tmp != NULL) {
                     if ((tmp->key2 = table->Space1[FIND_KS1(table, key111)].data->key2) && (tmp->release > count)) {
                         count = tmp->release;
                     }
+                    tmp = tmp->next;
                 }
                 printf("Element:");
-                printf("| %6s | %10lf | %10d | %10d | %s |\n", key111, table->Space1[FIND_KS1(table, key111)].data->key2, (count + 1), table->Space1[FIND_KS1(table, key111)].data->info->number, table->Space1[FIND_KS1(table, key111)].data->info->string);
+                printf("| %6s | %10d | %10d | %10lf | %s |\n", key111, table->Space1[FIND_KS1(table, key111)].data->key2, (count + 1), table->Space1[FIND_KS1(table, key111)].data->info->number, table->Space1[FIND_KS1(table, key111)].data->info->string);
             }
             else {
                 printf("No such elements in table");
             }
+            break;
         case 4: 
             printf("Please, enter key1: ");
-            char key11[N];
-            scanf("%6s", key11);
+            char* key11 = get_str();
 
             if (DELETE_ELEM_KS1(table, key11) == -1) {
                 printf("Error in delete");
@@ -79,7 +84,7 @@ int main() {
             scanf("%d", &key2);
             while (scanf("%*c"));
             struct BBlock **List1;
-            int len;
+            int len = 0;
             List1 = FIND_KS2(table, key2, &len);
             PRINT_LIST_KS2(List1, len);
             free(List1);

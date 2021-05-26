@@ -50,12 +50,12 @@ void D_PRINT_TABLE(struct TTable* table) {
 		printf("                  The Table:\n");
 
 		printf("----------------------------------------------------\n");
-		printf("|  KEY1 |    KEY2    |    NUMBER    |    STRING    |\n");
+		printf("|  KEY1  |    KEY2    |    NUMBER    |    STRING    |\n");
 		printf("----------------------------------------------------\n");
 
-		for (int i = 0; i < REORGANIZATION_KS1(table); i++)
+		for (int i = 0; i <= REORGANIZATION_KS1(table); i++)
 		{
-			printf("| %10s | %10lf | %10d | %s |\n", table->Space1[i].data->key1, table->Space1[i].data->key2, table->Space1[i].data->info->number, table->Space1[i].data->info->string);
+			printf("| %10s | %10d | %10lf | %s |\n", table->Space1[i].data->key1, table->Space1[i].data->key2, table->Space1[i].data->info->number, table->Space1[i].data->info->string);
 		}
 		printf("----------------------------------------------------\n");
 		printf("\n");
@@ -76,7 +76,7 @@ void D_PRINT_TABLE(struct TTable* table) {
 
 		for (int i = 0; i < MSIZE1; i++)
 		{
-			if (i < REORGANIZATION_KS1(table))
+			if (i <= REORGANIZATION_KS1(table))
 			{
 				printf("| %d | %6s | %d | %10lf | %s |\n", i, table->Space1[i].data->key1, table->Space1[i].busy, table->Space1[i].data->info->number, table->Space1[i].data->info->string);
 			}
@@ -101,9 +101,11 @@ void D_PRINT_TABLE(struct TTable* table) {
 		printf("--------------------------------------------------\n");
 
 		for (int i = 0; i < MSIZE2; i++) {
-			while (table->Space2[i].head->next != NULL) {
+			while (table->Space2[i].head != NULL) {
 				printf("| %d | %10d | %4d  | %10lf | %s |\n", i, table->Space2[i].head->key2, table->Space2[i].head->release, table->Space2[i].head->data->info->number, table->Space2[i].head->data->info->string);
+				table->Space2[i].head = table->Space2[i].head->next;
 			}
+			
 		}
 		printf("--------------------------------------------------\n");
 		printf("\n");
@@ -113,7 +115,7 @@ void D_PRINT_TABLE(struct TTable* table) {
 }
 
 void PRINT_LIST_KS2(struct BBlock** List, int len) {
-	for (int i = 0; i < len; i++) {
+ 	for (int i = 0; i < len; i++) {
 		printf("KEYSP2: %d %d %lf %s\n", List[i]->data->key2, List[i]->release, List[i]->data->info->number, List[i]->data->info->string);
 	}	
 }
